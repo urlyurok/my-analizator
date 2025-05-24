@@ -23,7 +23,7 @@
 - `transaction_service/models.py` — модели SQLAlchemy (User, Transaction).
 - `transaction_service/utils.py` — функции категоризации и проверки лимитов.
 - `transaction_service/database.py` — настройка БД и генерация тестовых данных.
-- `frontend/index.html` — React-фронтенд с Tailwind CSS и Chart.js.
+- `frontend/index.html` — фронтенд
 - `Dockerfile` — Docker-конфигурация для бэкенда.
 - `frontend/Dockerfile` — Docker-конфигурация для фронтенда.
 - `docker-compose.yml` — оркестрация бэкенда, фронтенда и PostgreSQL.
