@@ -1,0 +1,70 @@
+{
+    "info": {
+        "name": "Transaction Analysis Service",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Import Transactions",
+            "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                    "mode": "raw",
+                    "raw": "[\n  {\n    \"id\": \"tx1001\",\n    \"user_id\": 1,\n    \"amount\": -150.50,\n    \"currency\": \"RUB\",\n    \"description\": \"Taxi to airport\",\n    \"timestamp\": \"2024-11-01T10:12:00\"\n  }\n]",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/transactions/import",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "transactions",
+                        "import"
+                    ]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Get User Stats",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{baseUrl}}/users/1/stats?from=2024-11-01&to=2024-11-30",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "users",
+                        "1",
+                        "stats"
+                    ],
+                    "query": [
+                        {
+                            "key": "from",
+                            "value": "2024-11-01"
+                        },
+                        {
+                            "key": "to",
+                            "value": "2024-11-30"
+                        }
+                    ]
+                }
+            },
+            "response": []
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8000"
+        }
+    ]
+}

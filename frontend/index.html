@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold mb-4">Transaction Analysis</h1>
+
+        <!-- Форма для импорта транзакций -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-2">Import Transaction</h2>
+            <form id="import-form" class="space-y-4">
+                <input type="text" id="tx-id" placeholder="Transaction ID" class="border p-2 rounded w-full" required />
+                <input type="number" id="user-id-import" placeholder="User ID" class="border p-2 rounded w-full"
+                    required />
+                <input type="number" id="amount" placeholder="Amount (negative for expenses)"
+                    class="border p-2 rounded w-full" required />
+                <input type="text" id="description" placeholder="Description" class="border p-2 rounded w-full"
+                    required />
+                <input type="datetime-local" id="timestamp" class="border p-2 rounded w-full" required />
+                <button type="submit" class="bg-blue-500 text-white p-2 rounded">
+                    Import Transaction
+                </button>
+            </form>
+            <p id="import-message" class="mt-2 text-red-500 hidden"></p>
+        </div>
+
+        <!-- Форма для получения статистики -->
+        <div>
+            <h2 class="text-xl font-semibold mb-2">Get Statistics</h2>
+            <div class="flex space-x-4 mb-4">
+                <input type="number" id="user-id-stats" placeholder="User ID" class="border p-2 rounded" required />
+                <input type="date" id="from-date" class="border p-2 rounded" required />
+                <input type="date" id="to-date" class="border p-2 rounded" required />
+                <button id="fetch-stats" class="bg-green-500 text-white p-2 rounded">
+                    Fetch Stats
+                </button>
+            </div>
+
+            <!-- Отображение статистики -->
+            <div id="stats-container" class="hidden">
+                <h3 class="text-lg font-semibold">Statistics</h3>
+                <p id="total-spent"></p>
+                <p id="daily-average"></p>
+                <h4 class="font-semibold mt-2">By Category:</h4>
+                <table id="category-table" class="table-auto w-full border-collapse border">
+                    <thead>
+                        <tr>
+                            <th class="border p-2">Category</th>
+                            <th class="border p-2">Amount (RUB)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="category-table-body"></tbody>
+                </table>
+                <canvas id="categoryChart" class="mt-4"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Импорт транзакции
+        document.getElementById("import-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const messageEl = document.getElementById("import-message");
+            messageEl.classList.add("hidden");
+
+            const transaction = {
+                id: document.getElementById("tx-id").value,
+                user_id: parseInt(document.getElementById("user-id-import").value),
+                amount: parseFloat(document.getElementById("amount").value),
+                currency: "RUB",
+                description: document.getElementById("description").value,
+                timestamp: document.getElementById("timestamp").value,
+            };
+
+            try {
+                const response = await fetch("http://localhost:8000/transactions/import", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify([transaction]),
+                });
+                if (!response.ok) throw new Error((await response.json()).detail);
+                const data = await response.json();
+                messageEl.textContent = `Imported ${data.imported} transactions`;
+                messageEl.classList.remove("hidden", "text-red-500");
+                messageEl.classList.add("text-green-500");
+                document.getElementById("import-form").reset();
+            } catch (error) {
+                messageEl.textContent = `Error: ${error.message}`;
+                messageEl.classList.remove("hidden");
+                messageEl.classList.add("text-red-500");
+            }
+        });
+
+        // Получение статистики
+        document.getElementById("fetch-stats").addEventListener("click", async () => {
+            const userId = document.getElementById("user-id-stats").value;
+            const fromDate = document.getElementById("from-date").value;
+            const toDate = document.getElementById("to-date").value;
+            const statsContainer = document.getElementById("stats-container");
+            const totalSpentEl = document.getElementById("total-spent");
+            const dailyAverageEl = document.getElementById("daily-average");
+            const categoryTableBody = document.getElementById("category-table-body");
+
+            try {
+                const response = await fetch(
+                    `http://localhost:8000/users/${userId}/stats?from=${fromDate}&to=${toDate}`
+                );
+                if (!response.ok) throw new Error((await response.json()).detail);
+                const stats = await response.json();
+
+                // Отображение статистики
+                statsContainer.classList.remove("hidden");
+                totalSpentEl.textContent = `Total Spent: ${stats.total_spent.toFixed(2)} RUB`;
+                dailyAverageEl.textContent = `Daily Average: ${stats.daily_average.toFixed(2)} RUB`;
+
+                // Заполнение таблицы категорий
+                categoryTableBody.innerHTML = "";
+                for (const [category, amount] of Object.entries(stats.by_category)) {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `<td class="border p-2">${category}</td><td class="border p-2">${amount.toFixed(2)}</td>`;
+                    categoryTableBody.appendChild(row);
+                }
+
+                // Отрисовка графика
+                const ctx = document.getElementById("categoryChart").getContext("2d");
+                if (window.categoryChart) window.categoryChart.destroy(); // Уничтожаем предыдущий график
+                window.categoryChart = new Chart(ctx, {
+                    type: "pie",
+                    data: {
+                        labels: Object.keys(stats.by_category),
+                        datasets: [{
+                            data: Object.values(stats.by_category),
+                            backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF"],
+                        }],
+                    },
+                    options: { responsive: true },
+                });
+            } catch (error) {
+                document.getElementById("import-message").textContent = `Error: ${error.message}`;
+                document.getElementById("import-message").classList.remove("hidden");
+                document.getElementById("import-message").classList.add("text-red-500");
+                statsContainer.classList.add("hidden");
+            }
+        });
+    </script>
+</body>
+
+</html>

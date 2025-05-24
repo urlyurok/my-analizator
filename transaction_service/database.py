@@ -1,52 +1,49 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from models import Base, User, Transaction
+import time
 import random
 from datetime import datetime, timedelta
-from utils import categorize_transaction
-import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-logger = logging.getLogger(__name__)
+from transaction_service.models import Base, User, Transaction
+from transaction_service.utils import categorize_transaction
 
-# Настройка подключения к PostgreSQL
 DATABASE_URL = "postgresql+psycopg2://user:password@db:5432/transactions"
+
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def init_db():
+    time.sleep(5)  # ⏳ Подождать, пока PostgreSQL полностью запустится
     Base.metadata.create_all(bind=engine)
-    session = SessionLocal()
-    try:
-        # Проверка, есть ли пользователи
-        if not session.query(User).first():
-            # Создание тестового пользователя
-            user = User(id=1, name="Test User")
-            session.add(user)
 
-            # Генерация тестовых транзакций
-            descriptions = [
-                "Taxi to airport", "Grocery store", "Cinema ticket",
-                "Electricity bill", "Coffee at cafe", "Train ticket",
-                "Concert ticket", "Internet bill", "Restaurant dinner"
-            ]
-            for i in range(50):
-                tx = Transaction(
-                    id=f"tx{i+1001}",
-                    user_id=1,
-                    amount=-random.uniform(100, 5000),
-                    currency="RUB",
-                    description=random.choice(descriptions),
-                    category=categorize_transaction(
-                        random.choice(descriptions)),
-                    timestamp=datetime(2024, 11, 1) +
-                    timedelta(days=random.randint(0, 30))
-                )
-                session.add(tx)
-            session.commit()
-            logger.info("Test data generated")
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error generating test data: {str(e)}")
-    finally:
-        session.close()
+    with SessionLocal() as db:
+        user_count = db.query(User).count()
+        if user_count == 0:
+            for i in range(5):
+                user = User(id=i + 1, name=f"User {i + 1}")
+                db.add(user)
+
+            start_date = datetime(2024, 11, 1)
+            for user_id in range(1, 6):
+                for _ in range(20):
+                    amount = round(random.uniform(-1000, 1000), 2)
+                    description = random.choice(
+                        ["Coffee shop", "Grocery store", "Online purchase", "Restaurant", "Taxi"])
+                    timestamp = start_date + timedelta(
+                        days=random.randint(0, 30),
+                        hours=random.randint(0, 23)
+                    )
+                    category = categorize_transaction(description)
+                    transaction = Transaction(
+                        id=f"tx{user_id}{random.randint(1000, 9999)}",
+                        user_id=user_id,
+                        amount=amount,
+                        currency="RUB",
+                        description=description,
+                        timestamp=timestamp,
+                        category=category
+                    )
+                    db.add(transaction)
+            db.commit()
+            print("Test data generated for users and transactions")
