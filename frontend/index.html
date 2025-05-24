@@ -1,60 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transaction Analysis</title>
+    <title>Анализ транзакций</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto p-4">
-        <h1 class="text-3xl font-bold mb-4">Transaction Analysis</h1>
+        <h1 class="text-3xl font-bold mb-4">Анализ транзакций</h1>
 
         <!-- Форма для импорта транзакций -->
         <div class="mb-8">
-            <h2 class="text-xl font-semibold mb-2">Import Transaction</h2>
+            <h2 class="text-xl font-semibold mb-2">Импорт транзакции</h2>
             <form id="import-form" class="space-y-4">
-                <input type="text" id="tx-id" placeholder="Transaction ID" class="border p-2 rounded w-full" required />
-                <input type="number" id="user-id-import" placeholder="User ID" class="border p-2 rounded w-full"
+                <input type="text" id="tx-id" placeholder="ID транзакции" class="border p-2 rounded w-full" required />
+                <input type="number" id="user-id-import" placeholder="ID пользователя" class="border p-2 rounded w-full"
                     required />
-                <input type="number" id="amount" placeholder="Amount (negative for expenses)"
+                <input type="number" id="amount" placeholder="Сумма (отрицательная — расход)"
                     class="border p-2 rounded w-full" required />
-                <input type="text" id="description" placeholder="Description" class="border p-2 rounded w-full"
-                    required />
+                <input type="text" id="description" placeholder="Описание" class="border p-2 rounded w-full" required />
                 <input type="datetime-local" id="timestamp" class="border p-2 rounded w-full" required />
-                <button type="submit" class="bg-blue-500 text-white p-2 rounded">
-                    Import Transaction
-                </button>
+                <button type="submit" class="bg-blue-500 text-white p-2 rounded">Импортировать</button>
             </form>
             <p id="import-message" class="mt-2 text-red-500 hidden"></p>
         </div>
 
         <!-- Форма для получения статистики -->
         <div>
-            <h2 class="text-xl font-semibold mb-2">Get Statistics</h2>
+            <h2 class="text-xl font-semibold mb-2">Получить статистику</h2>
             <div class="flex space-x-4 mb-4">
-                <input type="number" id="user-id-stats" placeholder="User ID" class="border p-2 rounded" required />
+                <input type="number" id="user-id-stats" placeholder="ID пользователя" class="border p-2 rounded"
+                    required />
                 <input type="date" id="from-date" class="border p-2 rounded" required />
                 <input type="date" id="to-date" class="border p-2 rounded" required />
-                <button id="fetch-stats" class="bg-green-500 text-white p-2 rounded">
-                    Fetch Stats
-                </button>
+                <button id="fetch-stats" class="bg-green-500 text-white p-2 rounded">Получить</button>
             </div>
 
             <!-- Отображение статистики -->
             <div id="stats-container" class="hidden">
-                <h3 class="text-lg font-semibold">Statistics</h3>
+                <h3 class="text-lg font-semibold">Статистика</h3>
                 <p id="total-spent"></p>
                 <p id="daily-average"></p>
-                <h4 class="font-semibold mt-2">By Category:</h4>
+                <h4 class="font-semibold mt-2">По категориям:</h4>
                 <table id="category-table" class="table-auto w-full border-collapse border">
                     <thead>
                         <tr>
-                            <th class="border p-2">Category</th>
-                            <th class="border p-2">Amount (RUB)</th>
+                            <th class="border p-2">Категория</th>
+                            <th class="border p-2">Сумма (₽)</th>
                         </tr>
                     </thead>
                     <tbody id="category-table-body"></tbody>
@@ -88,12 +84,12 @@
                 });
                 if (!response.ok) throw new Error((await response.json()).detail);
                 const data = await response.json();
-                messageEl.textContent = `Imported ${data.imported} transactions`;
+                messageEl.textContent = `Импортировано транзакций: ${data.imported}`;
                 messageEl.classList.remove("hidden", "text-red-500");
                 messageEl.classList.add("text-green-500");
                 document.getElementById("import-form").reset();
             } catch (error) {
-                messageEl.textContent = `Error: ${error.message}`;
+                messageEl.textContent = `Ошибка: ${error.message}`;
                 messageEl.classList.remove("hidden");
                 messageEl.classList.add("text-red-500");
             }
@@ -116,12 +112,10 @@
                 if (!response.ok) throw new Error((await response.json()).detail);
                 const stats = await response.json();
 
-                // Отображение статистики
                 statsContainer.classList.remove("hidden");
-                totalSpentEl.textContent = `Total Spent: ${stats.total_spent.toFixed(2)} RUB`;
-                dailyAverageEl.textContent = `Daily Average: ${stats.daily_average.toFixed(2)} RUB`;
+                totalSpentEl.textContent = `Общие расходы: ${stats.total_spent.toFixed(2)} ₽`;
+                dailyAverageEl.textContent = `Средние расходы в день: ${stats.daily_average.toFixed(2)} ₽`;
 
-                // Заполнение таблицы категорий
                 categoryTableBody.innerHTML = "";
                 for (const [category, amount] of Object.entries(stats.by_category)) {
                     const row = document.createElement("tr");
@@ -129,9 +123,8 @@
                     categoryTableBody.appendChild(row);
                 }
 
-                // Отрисовка графика
                 const ctx = document.getElementById("categoryChart").getContext("2d");
-                if (window.categoryChart) window.categoryChart.destroy(); // Уничтожаем предыдущий график
+                if (window.categoryChart) window.categoryChart.destroy();
                 window.categoryChart = new Chart(ctx, {
                     type: "pie",
                     data: {
@@ -144,7 +137,7 @@
                     options: { responsive: true },
                 });
             } catch (error) {
-                document.getElementById("import-message").textContent = `Error: ${error.message}`;
+                document.getElementById("import-message").textContent = `Ошибка: ${error.message}`;
                 document.getElementById("import-message").classList.remove("hidden");
                 document.getElementById("import-message").classList.add("text-red-500");
                 statsContainer.classList.add("hidden");

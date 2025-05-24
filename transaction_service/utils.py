@@ -1,56 +1,48 @@
-import logging
-from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from transaction_service.models import Transaction
-
+import logging
+from sqlalchemy.sql import func
+from .models import Transaction
 
 logger = logging.getLogger(__name__)
 
 
 def categorize_transaction(description: str) -> str:
     description = description.lower()
-    categories = {
-        "Food": ["restaurant", "cafe", "grocery", "food"],
-        "Transport": ["taxi", "bus", "train", "fuel"],
-        "Entertainment": ["cinema", "concert", "game"],
-        "Utilities": ["electricity", "water", "internet"],
-        "Other": []
-    }
-    for category, keywords in categories.items():
-        if any(keyword in description for keyword in keywords):
-            return category
+    if any(word in description for word in ["coffee", "restaurant", "grocery", "food"]):
+        return "Food"
+    elif any(word in description for word in ["taxi", "transport", "bus", "train"]):
+        return "Transport"
+    elif any(word in description for word in ["movie", "concert", "game"]):
+        return "Entertainment"
+    elif any(word in description for word in ["electricity", "water", "internet", "bill"]):
+        return "Utilities"
     return "Other"
 
 
-def check_limits(session: Session, user_id: int, transaction: Transaction):
-    day_limit = 10000  # Дневной лимит в RUB
-    week_limit = 50000  # Недельный лимит в RUB
+def check_limits(session, user_id: int, transaction):
+    DAILY_LIMIT = 10000
+    WEEKLY_LIMIT = 50000
 
-    # Дневные траты
     day_start = transaction.timestamp.replace(
         hour=0, minute=0, second=0, microsecond=0)
-    day_end = day_start + timedelta(days=1)
-    daily_spent = session.query(Transaction).filter(
+    week_start = day_start - timedelta(days=day_start.weekday())
+
+    # Use func.sum to ensure proper aggregation
+    daily_spent = session.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == user_id,
         Transaction.amount < 0,
-        Transaction.timestamp >= day_start,
-        Transaction.timestamp < day_end
-    ).with_entities(sum(Transaction.amount)).scalar() or 0
+        Transaction.timestamp >= day_start
+    ).scalar() or 0
 
-    # Недельные траты
-    week_start = transaction.timestamp - \
-        timedelta(days=transaction.timestamp.weekday())
-    week_end = week_start + timedelta(days=7)
-    weekly_spent = session.query(Transaction).filter(
+    weekly_spent = session.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == user_id,
         Transaction.amount < 0,
-        Transaction.timestamp >= week_start,
-        Transaction.timestamp < week_end
-    ).with_entities(sum(Transaction.amount)).scalar() or 0
+        Transaction.timestamp >= week_start
+    ).scalar() or 0
 
-    if abs(daily_spent) > day_limit:
+    if abs(daily_spent) > DAILY_LIMIT:
         logger.warning(
-            f"User {user_id} exceeded daily limit: {abs(daily_spent)} RUB")
-    if abs(weekly_spent) > week_limit:
+            f"Daily spending limit exceeded for user {user_id}: {abs(daily_spent)} RUB")
+    if abs(weekly_spent) > WEEKLY_LIMIT:
         logger.warning(
-            f"User {user_id} exceeded weekly limit: {abs(weekly_spent)} RUB")
+            f"Weekly spending limit exceeded for user {user_id}: {abs(weekly_spent)} RUB")

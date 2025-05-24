@@ -133,3 +133,8 @@ async def get_stats(user_id: int, from_date: str, to_date: str):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
+
+
+@app.get("/")
+async def read_root():
+    return {"title": "Transaction Analysis Service"}
