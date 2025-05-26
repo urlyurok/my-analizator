@@ -45,7 +45,7 @@
 
 1. Клонируйте репозиторий:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/urlyurok/my-analizator
    cd transaction-service
    ```
 
