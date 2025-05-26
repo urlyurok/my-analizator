@@ -1,7 +1,7 @@
 # Сервис анализа транзакций
 
 Это микросервис на Python
-Бэкенд построен на FastAPI, SQLAlchemy и PostgreSQL, фронтенд использует React, Tailwind CSS и Chart.js.
+Бэкенд построен на FastAPI, SQLAlchemy и PostgreSQL
 
 ---
 

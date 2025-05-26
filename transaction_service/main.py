@@ -1,14 +1,14 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from sqlalchemy.orm import Session
-from typing import List
-from datetime import datetime, timedelta
-import logging
-
-from transaction_service.database import SessionLocal, init_db
-from transaction_service.models import Transaction, User
 from transaction_service.utils import categorize_transaction, check_limits
+from transaction_service.models import Transaction, User
+from transaction_service.database import SessionLocal, init_db
+from sqlalchemy.sql import func
+import logging
+from datetime import datetime, timedelta
+from typing import List
+from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException
 
 # Настройка логгирования
 logging.basicConfig(level=logging.INFO,
@@ -45,6 +45,11 @@ class TransactionInput(BaseModel):
 async def startup_event():
     init_db()
 
+
+@app.get("/")
+async def read_root():
+    return {"title": "Transaction Analysis Service"}
+
 # Импорт транзакций
 
 
@@ -64,6 +69,10 @@ async def import_transactions(transactions: List[TransactionInput]):
             if not session.query(User).filter_by(id=tx.user_id).first():
                 raise HTTPException(
                     status_code=400, detail=f"User {tx.user_id} not found")
+            # Check for existing transaction
+            if session.query(Transaction).filter_by(id=tx.id).first():
+                raise HTTPException(
+                    status_code=400, detail=f"Transaction ID {tx.id} already exists")
 
             category = categorize_transaction(tx.description)
 
@@ -105,14 +114,14 @@ async def get_stats(user_id: int, from_date: str, to_date: str):
         if not session.query(User).filter_by(id=user_id).first():
             raise HTTPException(status_code=404, detail="User not found")
 
-        total_spent = session.query(Transaction).filter(
+        total_spent = session.query(func.sum(Transaction.amount)).filter(
             Transaction.user_id == user_id,
             Transaction.amount < 0,
             Transaction.timestamp >= start,
             Transaction.timestamp < end
-        ).with_entities(sum(Transaction.amount)).scalar() or 0
+        ).scalar() or 0
 
-        by_category = session.query(Transaction.category, sum(Transaction.amount)).filter(
+        by_category = session.query(Transaction.category, func.sum(Transaction.amount)).filter(
             Transaction.user_id == user_id,
             Transaction.amount < 0,
             Transaction.timestamp >= start,
@@ -133,8 +142,3 @@ async def get_stats(user_id: int, from_date: str, to_date: str):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
-
-
-@app.get("/")
-async def read_root():
-    return {"title": "Transaction Analysis Service"}
